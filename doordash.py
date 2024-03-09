@@ -53,7 +53,7 @@ def lambda_handler(event, context):
         response = sns.publish(Subject="SUCCESS - Daily Data Processing", TargetArn=sns_topic_arn, Message=message)
         
         # Record the unique identifier of the recipient
-        recipient_identifier = f"{sns_topic_arn}-{event['Records'][0]['Sns']['MessageId']}"
+        recipient_identifier = f"{sns_topic_arn}-{event['Records'][0]['sns']['MessageId']}"
         already_notified.add(recipient_identifier)
         
         return {
