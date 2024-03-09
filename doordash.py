@@ -8,8 +8,8 @@ s3 = boto3.client('s3')
 sns = boto3.client('sns')
 
 # Define the S3 bucket names
-source_bucket_name = 'source_bucket_name'
-destination_bucket_name = 'destination_bucket_name'
+source_bucket_name = 'doordash-landing-zn'
+destination_bucket_name = 'doordash-target-zn'
 
 # Define the SNS topic ARN
 sns_topic_arn = 'arn:aws:sns:ap-south-1:905418304113:Doordash'
