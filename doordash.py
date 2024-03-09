@@ -14,6 +14,9 @@ destination_bucket_name = 'doordash-target-zn'
 # Define the SNS topic ARN
 sns_topic_arn = 'arn:aws:sns:ap-south-1:905418304113:Doordash'
 
+# Initialize a set to store unique identifiers of recipients who have already received notifications
+already_notified = set()
+
 def lambda_handler(event, context):
     try:
         # Get the uploaded JSON file from the event
@@ -22,7 +25,10 @@ def lambda_handler(event, context):
         
         # Download the JSON file from the source S3 bucket
         response = s3.get_object(Bucket=source_bucket, Key=file_key)
-        delivery_data = json.loads(response['Body'].read())
+        body_content = response['Body'].read().decode('utf-8')
+        
+        # Load JSON data
+        delivery_data = json.loads(body_content)
         
         # Convert JSON data to DataFrame
         df = pd.DataFrame(delivery_data)
@@ -43,8 +49,12 @@ def lambda_handler(event, context):
         s3.put_object(Bucket=destination_bucket_name, Key=destination_key, Body=json.dumps(filtered_data))
         
         # Send notification about the processing outcome
-        message = "Input S3 File {} has been processed succesfuly !!".format("s3://"+source_bucket+"/"+file_key)
-        respone = sns.publish(Subject="SUCCESS - Daily Data Processing",TargetArn=sns_topic_arn, Message=message, MessageStructure='text')
+        message = f"Input S3 File s3://{source_bucket}/{file_key} has been processed successfully!"
+        response = sns.publish(Subject="SUCCESS - Daily Data Processing", TargetArn=sns_topic_arn, Message=message)
+        
+        # Record the unique identifier of the recipient
+        recipient_identifier = f"{sns_topic_arn}-{event['Records'][0]['Sns']['MessageId']}"
+        already_notified.add(recipient_identifier)
         
         return {
             'statusCode': 200,
@@ -52,8 +62,8 @@ def lambda_handler(event, context):
         }
     except Exception as e:
         # Handle any exceptions
-        message = "Input S3 File {} processing is Failed !!".format("s3://"+source_bucket+"/"+file_key)
-        respone = sns.publish(Subject="Failure - Daily Data Processing",TargetArn=sns_topic_arn, Message=message, MessageStructure='text')
+        message = f"Input S3 File s3://{source_bucket}/{file_key} processing has failed: {str(e)}"
+        response = sns.publish(Subject="Failure - Daily Data Processing", TargetArn=sns_topic_arn, Message=message)
         return {
             'statusCode': 500,
             'body': json.dumps('Error processing delivery data.')
