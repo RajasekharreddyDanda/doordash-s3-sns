@@ -14,23 +14,11 @@ destination_bucket_name = 'doordash-target-zn'
 # Define the SNS topic ARN
 sns_topic_arn = 'arn:aws:sns:ap-south-1:905418304113:Doordash'
 
-# Set to record already notified recipients
-already_notified = set()
-
 def lambda_handler(event, context):
     try:
         # Get the uploaded JSON file from the event
         source_bucket = event['Records'][0]['s3']['bucket']['name']
         file_key = event['Records'][0]['s3']['object']['key']
-        
-        # Check if already notified
-        recipient_identifier = f"{sns_topic_arn}-{event['Records'][0]['Sns']['MessageId']}"
-        if recipient_identifier in already_notified:
-            print(f"Already notified for message ID: {event['Records'][0]['Sns']['MessageId']}")
-            return {
-                'statusCode': 200,
-                'body': json.dumps('Already notified.')
-            }
         
         # Download the JSON file from the source S3 bucket
         response = s3.get_object(Bucket=source_bucket, Key=file_key)
@@ -57,9 +45,7 @@ def lambda_handler(event, context):
         # Save the filtered data to the destination S3 bucket
         s3.put_object(Bucket=destination_bucket_name, Key=destination_key, Body=json.dumps(filtered_data))
         
-        # Record the recipient as notified
-        already_notified.add(recipient_identifier)
-        
+        print("Successfully processed and saved the delivered orders.")
         # Send notification about the processing outcome
         message = f"Input S3 File s3://{source_bucket}/{file_key} has been processed successfully!"
         sns.publish(Subject="SUCCESS - Daily Data Processing", TargetArn=sns_topic_arn, Message=message)
